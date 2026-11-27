@@ -1,93 +1,81 @@
 # claude-player
 
-Elevator music for Claude Code. Plays a random lounge-jazz track in the background while Claude is thinking, rotates tracks if work runs long, stops the moment Claude finishes, and never repeats the same track back-to-back.
-
-```
-[Opus 4.7] 📁 claude-player │ ♪ Bossa Nova Background Music Version 60s
-```
+Elevator music for Claude Code. A Claude Code mod (plugin name `elevator-music`) plays a random lounge-jazz track while Claude works, rotates tracks if the work runs long, stops when Claude finishes, and never repeats the same track back-to-back.
 
 ## Install
 
-### As a Claude Code plugin (recommended)
-
-In Claude Code:
+At the prompt of a Claude Code terminal session:
 
 ```
-/plugin marketplace add <git-url-of-this-repo>
-/plugin install claude-player@claude-player
+/plugin install elevator-music --marketplace betacar/claude-player
 ```
 
-Restart Claude Code. From your next prompt, music starts one second after you hit enter and stops when Claude finishes responding.
+Answer `y` to add the marketplace, then pick a scope. From the CLI: `claude plugin install elevator-music --marketplace betacar/claude-player`.
 
-### As a local plugin (for development or one-machine use)
+For development, run it from a clone:
 
 ```
-git clone <git-url-of-this-repo>
+git clone git@github.com:betacar/claude-player.git
 claude --plugin-dir ./claude-player
 ```
 
+> The plugin is named `elevator-music`, not `claude-player`: Claude Code reserves plugin names that start with `claude-`.
+
 ## Usage
 
-Music plays automatically while Claude is working. Control it with the bundled slash command:
+Music starts one second after a turn starts and stops when the main turn completes. Fast turns stay silent. Subagents finishing do not stop the music.
 
 ```
-/claude-player:music start         # enable the hook
-/claude-player:music stop          # disable the hook (and silence)
-/claude-player:music skip          # jump to the next random track
-/claude-player:music now           # what's playing right now
-/claude-player:music history       # last 10 tracks played
-/claude-player:music status        # full state dump
-/claude-player:music toggle        # flip enabled ↔ disabled
+/music on       # enable (persists across sessions)
+/music off      # disable and silence
+/music toggle   # flip enabled / disabled
+/music skip     # jump to the next random track
+/music now      # what is playing right now
+/music status   # enabled state, player style, current track
 ```
 
-The disabled state persists across sessions until you `start` again.
+`/music` runs at once, even while Claude is working.
 
-## Optional: now-playing in the status line
+## Player style: `player` option
 
-Plugin `settings.json` can't configure Claude Code's main status line (the format only supports `agent` and `subagentStatusLine`), so this is a one-time manual step. Add the following block to your `~/.claude/settings.json`:
+| Value             | What you see                                                                                        |
+| :---------------- | :-------------------------------------------------------------------------------------------------- |
+| `smol` (default)  | `♪ <track name>` in the status line under the prompt while a track plays.                           |
+| `chonky`          | A band above the prompt: `♪ <track name>`, a Play/Pause button and a Next button.                   |
+
+In `chonky`, Pause stops the track and keeps the player silent, also for later turns, until you press Play. Play starts a new track (there is no seek, so a track never resumes where it stopped). Play while idle starts music, which stops at the end of the next turn.
+
+Set the option in `/config` (the `elevator-music` player row), or in `settings.json`:
 
 ```json
 {
-  "statusLine": {
-    "type": "command",
-    "command": "bash \"$HOME/.claude/plugins/cache/claude-player/claude-player/bin/elevator-music-statusline\"",
-    "refreshInterval": 1
+  "pluginConfigs": {
+    "elevator-music": { "options": { "player": "chonky" } }
   }
 }
 ```
 
-After restarting Claude Code, the status bar will show the prettified current track with a rotating music glyph (🎵 ♫ ♬ ♪), `🎼 cueing up…` during the 1-second pre-roll, or `🔇 elevator-music off` while disabled (toggle via `/claude-player:music stop`).
+## Requirements and limits
 
-## Configuration
+- **macOS only.** Playback uses Claude Code's built-in `$.audio.play`, which plays through `afplay` on macOS. On Linux and Windows it plays nothing. The old shell version supported `mpg123`, `ffplay`, `mpv`, `paplay` and PowerShell; this mod does not.
+- **Dropped from the shell version:**
+  - `/music history` and the history log.
+  - The env vars `ELEVATOR_MUSIC_TRACKS_DIR`, `ELEVATOR_MUSIC_STATE_DIR` and `ELEVATOR_MUSIC_START_DELAY`. Tracks come from the plugin's `tracks/` folder. The delay is fixed at one second.
+  - The status line script. The `player` option replaces it.
 
-| Env var                      | Default                    | Effect                                          |
-| :--------------------------- | :------------------------- | :---------------------------------------------- |
-| `ELEVATOR_MUSIC_TRACKS_DIR`  | `<plugin-root>/tracks`     | Directory scanned for audio files               |
-| `ELEVATOR_MUSIC_STATE_DIR`   | `~/.claude/elevator-music` | Where PID files, history, and the disabled flag live |
-| `ELEVATOR_MUSIC_START_DELAY` | `1.0`                      | Seconds to wait before starting the first track |
-
-To swap in your own music, drop `.mp3`/`.wav`/`.m4a`/`.flac`/`.ogg` files into any directory and point `ELEVATOR_MUSIC_TRACKS_DIR` at it.
-
-## Requirements
-
-- **macOS** — uses the built-in `afplay`. No setup needed.
-- **Linux** — needs one of `mpg123`, `ffplay`, `mpv`, or `paplay` on `PATH`.
-- **Windows** — needs `ffplay`, `mpg123`, or `mpv` on `PATH` (a PowerShell + MediaPlayer fallback exists but is single-shot, not looped).
-
-`python3` (or `jq`) is recommended for the hook to parse Claude Code's JSON payloads; both are present by default on macOS.
+To use your own music, put `.mp3`/`.wav`/`.m4a`/`.flac`/`.ogg` files in `tracks/` of your clone and run it with `--plugin-dir`.
 
 ## How it works
 
-Three Claude Code hooks drive the behavior:
+`hooks/register.tsx` is the mod's hooks module:
 
-- **`UserPromptSubmit`** spawns a detached background bash loop. It sleeps a cancellable second, then picks a random track that isn't the last one played and launches the OS-native audio player. When the player exits (track ends), the loop picks another one.
-- **`Stop`** and **`SubagentStop`** send `SIGTERM` to the loop. A trap inside the loop kills the active player child instantly. If `Stop` fires inside the 1-second pre-roll, no audio is ever produced — fast Claude responses stay silent.
-
-State lives in `~/.claude/elevator-music/`: a PID file for the loop, a separate child-PID file for the active player (this is what the statusline checks), the last-played track filename, a timestamped `history.log`, and a `disabled` flag.
+- `turn.start` (main loop only) arms a one-second timer. When it fires, a loop plays one track at a time and picks a random track that is not the last one played.
+- `turn.complete` (main loop only) cancels the timer or aborts the current track. If it fires inside the first second, no audio plays.
+- `command.run` serves `/music`. The enabled flag lives in the plugin's store, so it survives sessions.
 
 ## Track credits
 
-The bundled tracks are royalty-free lounge-jazz and bossa-nova clips downloaded from [Pixabay](https://pixabay.com/music/search/elevator%20music/). Replace them with your own via `ELEVATOR_MUSIC_TRACKS_DIR` if you prefer different mood music.
+The bundled tracks are royalty-free lounge-jazz and bossa-nova clips from [Pixabay](https://pixabay.com/music/search/elevator%20music/).
 
 ## License
 

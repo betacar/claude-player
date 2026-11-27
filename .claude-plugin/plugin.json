@@ -1,9 +1,19 @@
 {
-  "name": "claude-player",
-  "description": "Plays elevator music in the background while Claude Code is thinking. Random non-repeat track rotation, OS-aware playback, /claude-player:music slash controls, and an optional now-playing status line.",
-  "version": "0.0.1",
+  "name": "elevator-music",
+  "description": "Plays elevator music while Claude Code is thinking. Random non-repeat track rotation, a /music command, and a now-playing status or band.",
+  "version": "0.1.0",
   "author": {
     "name": "Carlos Betancourt Carrero"
   },
-  "keywords": ["music", "elevator-music", "hooks", "statusline", "fun"]
+  "keywords": ["music", "elevator-music", "mod", "fun"],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "player": {
+      "title": "Player",
+      "description": "smol: a note in the status line. chonky: a band above the prompt with play/pause and next buttons.",
+      "type": "string",
+      "default": "smol",
+      "options": ["smol", "chonky"]
+    }
+  }
 }
