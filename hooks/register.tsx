@@ -6,7 +6,7 @@ const isPaused = atom({ plugin: 'elevator-music', key: 'isPaused' } as const, fa
 
 const START_DELAY_MS = 1000
 const AUDIO = /\.(mp3|wav|m4a|flac|ogg)$/i
-const USAGE = 'usage: /music [on|off|toggle|skip|now|status]'
+const HINT = '[on|off|toggle|skip|now|status]'
 
 // "uploader-some-elevator-music-title-123456.mp3" -> "Some Title"
 export function prettyName(file: string): string {
@@ -90,7 +90,7 @@ export const register: Register = (on, options) => {
     await $.command.register({
       name: 'music',
       description: 'Control the elevator music',
-      argumentHint: '[on|off|toggle|skip|now|status]',
+      argumentHint: HINT,
       immediate: true,
     })
     return next(e)
@@ -139,7 +139,7 @@ export const register: Register = (on, options) => {
           ].join('\n'),
         }
       default:
-        return { text: USAGE }
+        return { text: `usage: /music ${HINT}` }
     }
   })
 
