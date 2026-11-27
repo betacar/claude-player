@@ -39,7 +39,8 @@ async function loop($: EngineInterface, signal: AbortSignal) {
       const pool = files.length > 1 ? files.filter(f => f !== last) : files
       const file = pool[Math.floor(Math.random() * pool.length)]!
       last = file
-      const ctl = (clip = new AbortController())
+      const ctl = new AbortController()
+      clip = ctl
       await update($, track, () => file)
       if (!isChonky) $.ui.status(`♪ ${prettyName(file)}`)
       const startedAt = await $.clock.now()
@@ -50,10 +51,11 @@ async function loop($: EngineInterface, signal: AbortSignal) {
     }
   } finally {
     // A newer loop owns the track and status now; leave them alone.
-    if (run && run.signal !== signal) return
-    run = clip = undefined
-    if (!(await read($, isPaused))) await update($, track, () => null)
-    $.ui.status(undefined)
+    if (!run || run.signal === signal) {
+      run = clip = undefined
+      if (!(await read($, isPaused))) await update($, track, () => null)
+      $.ui.status(undefined)
+    }
   }
 }
 
@@ -102,7 +104,7 @@ export const register: Register = (on, options) => {
   })
 
   // Main loop only: a subagent finishing must not stop the music.
-  on('turn.complete', ($, e, next) => {
+  on('turn.complete', (_, e, next) => {
     if (e.agentId === undefined) stop()
     return next(e)
   })

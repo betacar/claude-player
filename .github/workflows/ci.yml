@@ -13,12 +13,13 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
-      # The mod API is early access and moves between releases: pin the CLI,
-      # bump it on purpose.
-      - run: npm install -g @anthropic-ai/claude-code@2.1.326
+          node-version: 24
+      # Pinned tools: the mod API is early access and moves between releases,
+      # and a linter bump can add rules. Bump both on purpose.
+      - run: npm install -g @anthropic-ai/claude-code@2.1.326 @biomejs/biome@2.6.9
+      - run: biome lint .
       - run: claude plugin validate .
       - run: claude plugin test .

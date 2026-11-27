@@ -73,6 +73,15 @@ To use your own music, put `.mp3`/`.wav`/`.m4a`/`.flac`/`.ogg` files in `tracks/
 - `turn.complete` (main loop only) cancels the timer or aborts the current track. If it fires inside the first second, no audio plays.
 - `command.run` serves `/music`. The enabled flag lives in the plugin's store, so it survives sessions.
 
+## Development
+
+CI (`.github/workflows/ci.yml`) runs `biome lint .`, `claude plugin validate .` and `claude plugin test .` on pushes and pull requests to `main`.
+
+CI does not type-check. The API types come from Claude Code itself, and it writes them only when a session loads the mod. To type-check on your machine:
+
+1. Start a session with the mod once: `claude --plugin-dir .`. Claude Code writes `.claude-plugin/types/` and a `tsconfig.json` that uses them.
+2. Run `npx -p typescript@5.6.3 tsc -p .`.
+
 ## Track credits
 
 The bundled tracks are royalty-free lounge-jazz and bossa-nova clips from [Pixabay](https://pixabay.com/music/search/elevator%20music/).
