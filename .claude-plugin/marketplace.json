@@ -1,11 +1,12 @@
 {
-  "name": "claude-player",
+  "name": "elevator-music",
+  "description": "Elevator music while Claude Code is thinking.",
   "owner": {
     "name": "Carlos Betancourt Carrero"
   },
   "plugins": [
     {
-      "name": "claude-player",
+      "name": "elevator-music",
       "source": "./",
       "description": "Elevator music while Claude Code is thinking."
     }
